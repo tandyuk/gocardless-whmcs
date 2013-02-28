@@ -23,7 +23,8 @@ For help with using this module, contact the GoCardless support team at <help@go
 
 __v1.1.0__
 
-*tba*
+* Always use the "mark as paid instantly" option - WHMCS will still be updated
+down the line if there is a failure
 
 __v1.0.4__
 

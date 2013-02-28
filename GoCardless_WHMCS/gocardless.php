@@ -85,11 +85,6 @@
                 'Type' => 'yesno',
                 'Description' => 'Tick to only perform one off captures - no recurring pre-authorization agreements will be created.'
             ),
-            'instantpaid' => array(
-                'FriendlyName' => 'Instant Activation',
-                'Type' => 'yesno',
-                'Description' => 'Tick to immediately mark invoices paid after payment is initiated (despite clearing not being confirmed for 3-5 days). This means that the payment could still fail later on.'
-            ),
             'test_mode' => array(
                 'FriendlyName' => 'Sandbox Mode',
                 'Type' => 'yesno',

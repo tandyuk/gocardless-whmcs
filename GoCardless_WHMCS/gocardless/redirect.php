@@ -5,7 +5,7 @@
     * This file confirms verifies a preauth and creates a bill underneath it
     * Either a one of payment (bill) or a pre authorisation can be handled by this file
     * @author WHMCS <info@whmcs.com>
-    * @version 1.0.4
+    * @version 1.1.0
     */
 
     # load all required files
@@ -148,36 +148,30 @@
                 break;
         }
 
-        # check if we should be marking the bill as paid instantly
-        if($gateway['instantpaid'] == 'on') {
+        # convert currency where necessary (GoCardless only handles GBP)
+        $aCurrency = getCurrency($res['userid']);
+        if($gateway['convertto'] && ($aCurrency['id'] != $gateway['convertto'])) {
+            # the users currency is not the same as the GoCardless currency, convert to the users currency
+            $oBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
+            $oBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
 
-            # convert currency where necessary (GoCardless only handles GBP)
-            $aCurrency = getCurrency($res['userid']);
-            if($gateway['convertto'] && ($aCurrency['id'] != $gateway['convertto'])) {
-                # the users currency is not the same as the GoCardless currency, convert to the users currency
-                $oBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
-                $oBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
-
-                # currency conversion on the setup fee bill
-                if(isset($oSetupBill)) {
-                    $oSetupBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
-                    $oSetupBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
-                }
-            }
-
-            # check if we are handling a preauth setup fee
-            # if we are then we need to add it to the total bill
+            # currency conversion on the setup fee bill
             if(isset($oSetupBill)) {
-                addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
+                $oSetupBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
+                $oSetupBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
             }
-
-            # add the payment to the invoice
-            addInvoicePayment($invoiceID, $oBill->id, $oBill->amount, $oBill->gocardless_fees, $gateway['paymentmethod']);
-            logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$oBill->id.')Instant Paid: (Invoice #'.$invoiceID.')' . print_r($oBill, true), 'Successful');
-        } else {
-            # log payment as pending
-            logTransaction($gateway['paymentmethod'],'GoCardless Bill ('.$oBill->id.') Pending. Invoice #' . $invoiceID,'Pending');
         }
+
+        # check if we are handling a preauth setup fee
+        # if we are then we need to add it to the total bill
+        if(isset($oSetupBill)) {
+            addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
+        }
+
+        # add the payment to the invoice
+        addInvoicePayment($invoiceID, $oBill->id, $oBill->amount, $oBill->gocardless_fees, $gateway['paymentmethod']);
+        logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$oBill->id.')Instant Paid: (Invoice #'.$invoiceID.')' . print_r($oBill, true), 'Successful');
+
 
         # if we get to this point, we have verified everything we need to, redirect to invoice
         $systemURL = ($CONFIG['SystemSSLURL'] ? $CONFIG['SystemSSLURL'] : $CONFIG['SystemURL']);
