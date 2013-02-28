@@ -23,6 +23,7 @@ For help with using this module, contact the GoCardless support team at <help@go
 
 __v1.1.0__
 
+* Designed for __variable payments__ - now always uses a £5000 pre-auth
 * Always use the "mark as paid instantly" option - WHMCS will still be updated
 down the line if there is a failure
 

@@ -89,11 +89,6 @@
                 'FriendlyName' => 'Sandbox Mode',
                 'Type' => 'yesno',
                 'Description' => 'Tick to enable the GoCardless Sandbox environment where real payments will not be taken. You will need to have set the specific sandbox keys above.'
-            ),
-            'pre_auth_maximum' => array(
-                'FriendlyName' => 'Custom pre-authorization amount',
-                'Type' => 'text',
-                'Description' => 'Use a custom amount as the maximum for the pre-authorization used. This must be an <i>integer</i> or it will be ignored. <strong>Please speak to <a href=\'mailto:help@gocardless.com\'>GoCardless support</a> before using this option.</strong>'
             )
         );
 
@@ -236,11 +231,7 @@
                 $aRecurrings['recurringcycleperiod'] = ($aRecurrings['recurringcycleperiod']*12);
             }
 
-            if (intval($params['pre_auth_maximum']) != 0) {
-              $pre_auth_maximum = intval($params['pre_auth_maximum']);
-            } else {
-              $pre_auth_maximum = $aRecurrings['recurringamount'];
-            }
+            $pre_auth_maximum = 5000; # Always create a £5000 pre-auth
 
             # Button title
             $title = 'Create Subscription with GoCardless';
