@@ -210,7 +210,7 @@
             # create GoCardless one off payment URL using the GoCardless library
             $url = GoCardless::new_bill_url(array(
                     'amount'  => $params['amount'],
-                    'name'    => $params['description'],
+                    'name'    => "Invoice #" . $params['invoiceid'],
                     'user'    => $aUser,
                     'state'   => $params['invoiceid'] . ':' . $params['amount']
                 ));
@@ -241,7 +241,7 @@
                     'max_amount' => $pre_auth_maximum,
                     # set the setup fee as the first payment amount - recurring amount
                     'setup_fee' => ($aRecurrings['firstpaymentamount'] > $aRecurrings['recurringamount']) ? ($aRecurrings['firstpaymentamount']-$aRecurrings['recurringamount']) : 0,
-                    'name' => $params['description'],
+                    'name' => "Direct Debit payments to " . $CONFIG['CompanyName'],
                     'interval_length' => $aRecurrings['recurringcycleperiod'],
                     # convert $aRecurrings['recurringcycleunits'] to valid value e.g. day,month,year
                     'interval_unit' => $recurringcycleunit,
@@ -311,7 +311,10 @@
 
                     # Create a bill with the $pre_auth object
                     try {
-                        $bill = $pre_auth->create_bill(array('amount' => $params['amount']));
+                        $bill = $pre_auth->create_bill(array(
+                            'amount' => $params['amount'],
+                            'name' => "Invoice #" . $invoiceID
+                        ));
                     } catch (Exception $e) {
                         # we failed to create a new bill, lets update mod_gocardless to alert the admin why payment hasnt been received,
                         # log this in the transaction log and exit out
