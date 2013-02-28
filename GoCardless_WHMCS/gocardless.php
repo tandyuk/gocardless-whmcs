@@ -246,7 +246,7 @@
                     # convert $aRecurrings['recurringcycleunits'] to valid value e.g. day,month,year
                     'interval_unit' => $recurringcycleunit,
                     # set the start date to the creation date of the invoice - 2 days
-                    'start_at' => date_format(date_create($aInvoice['date'].' -2 days'),'Y-m-d'),
+                    'start_at' => date_format(date_create($aInvoice['date'].' -2 days'),'Y-m-d\TH:i:sO'),
                     'user' => $aUser,
                     'state' => $params['invoiceid'] . ':' . $aRecurrings['recurringamount']
                 ));
