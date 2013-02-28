@@ -84,17 +84,20 @@
 
             # check if we have a setup_fee
             $setup_id = false;
+            $setup_amount = 0;
             if($pre_auth->setup_fee > 0) {
                 # store the bill in $oSetupBill for later user
                 $aoSetupBills = $pre_auth->bills();
                 $oSetupBill = $aoSetupBills[0];
                 $setup_id = $oSetupBill->id;
+                $setup_amount = $oSetupBill->amount;
                 unset($aoSetupBills);
             }
 
             # create a GoCardless bill and store it in $bill
             try {
-                $oBill = $pre_auth->create_bill(array('amount' => $invoiceAmount));
+                $amount_to_charge = $invoiceAmount - $setup_amount;
+                $oBill = $pre_auth->create_bill(array('amount' => $amount_to_charge));
             } catch (Exception $e) {
                 # log that we havent been able to create the bill and exit out
                 logTransaction($gateway['paymentmethod'],'Failed to create new bill: ' . print_r($e,true),'GoCardless Error');
