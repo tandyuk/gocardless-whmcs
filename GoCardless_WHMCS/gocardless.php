@@ -350,7 +350,7 @@
                             insert_query('mod_gocardless', array('invoiceid' => $params['invoiceid'], 'billcreated' => 1, 'resource_id' => $bill->id, 'preauth_id'  => $pre_auth->id));
                             addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
                             logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$bill->id.')Instant Paid: (Invoice #'.$params['invoiceid'].')' . print_r($bill, true), 'Successful');
-                            return array('status' => 'Bill Created', 'rawdata' => $bill);
+                            return array('status' => 'Bill Created', 'rawdata' => print_r($bill, true));
                         } else {
                             # update the table with the bill ID
                             update_query('mod_gocardless', array('billcreated' => 1, 'resource_id' => $bill->id), array('invoiceid' => $params['invoiceid']));
