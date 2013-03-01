@@ -27,6 +27,8 @@ __v1.1.0__
 * Always use the "mark as paid instantly" option - WHMCS will still be updated
 down the line if there is a failure
 * Updates descriptions on pre-authorisations and individual payments
+* Prevents customers from setting up multiple pre-authorizations if there is
+one set up but not yet billed again for an invoice
 * General bug fixes
 
 __v1.0.4__

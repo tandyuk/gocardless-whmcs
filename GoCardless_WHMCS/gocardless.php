@@ -201,8 +201,24 @@
             'billing_postcode'  => $params['clientdetails']['postcode'],
         );
 
-        # if one of the $noPreauth conditions have been met, display a one time payment button
-        if ($noPreauth) {
+        $invoice_item_query = select_query('tblinvoiceitems', 'relid', array('invoiceid' => $params['invoiceid'], 'type' => 'Hosting'));
+
+        while ($invoice_item = mysql_fetch_assoc($invoice_item_query)) {
+            $package_query = select_query('tblhosting', 'subscriptionid', array('id' => $invoice_item['relid']));
+            $package = mysql_fetch_assoc($package_query);
+
+            if (!empty($package['subscriptionid'])) {
+                $preauthExists = true;
+            }
+        }
+
+        if ($preauthExists) {
+            # The customer already has a pre-auth, but it's yet to be charged so
+            # let's not let them set up another...
+            return (GoCardless::$environment == 'sandbox' ? '<strong style="color: #FF0000; font-size: 16px;">SANDBOX MODE</strong><br />' : null) . '<strong>Direct Debit payments via GoCardless are already configured for this invoice. You will receive an email once you have been billed.</strong>';
+        }
+        elseif ($noPreauth) {
+            # if one of the $noPreauth conditions have been met, display a one time payment button
             # we are making a one off payment, display the appropriate code
             # Button title
             $title = 'Pay Now with GoCardless';
