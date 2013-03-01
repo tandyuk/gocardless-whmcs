@@ -26,6 +26,7 @@ __v1.1.0__
 * Designed for __variable payments__ - now always uses a £5000 pre-auth
 * Always use the "mark as paid instantly" option - WHMCS will still be updated
 down the line if there is a failure
+* Updates descriptions on pre-authorisations and individual payments
 * General bug fixes
 
 __v1.0.4__
