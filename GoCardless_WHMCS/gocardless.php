@@ -36,7 +36,7 @@
             ),
             'UsageNotes' => array(
                 'Type' => 'System',
-                'Value' => "You must set your <strong>Webhook URI</strong> and <strong>Redirect URI</strong> within the 'Developer' tab on GoCardless to <strong>{$systemUrl}/modules/gateways/gocardless/callback.php</strong> and <strong>{$systemUrl}/modules/gateways/gocardless/redirect.php</strong> respectively.<br /><br />A full guide to configuring WHMCS with GoCardless is available <a href='https://gocardless.com/partners/whmcs-detailed'>here</a>. For help, please email <a href='mailto:help@gocardless.com'>help@gocardless.com</a>. <i>You're running GoCardless for WHMCS v" . GC_VERSION . ".""
+                'Value' => "Please make sure your credentials are correct before saving.)<br /><br /><i>You're running GoCardless for WHMCS v" . GC_VERSION . ". You must set your <strong>Webhook URI</strong> and <strong>Redirect URI</strong> within the 'Developer' tab on GoCardless to <strong>{$systemUrl}/modules/gateways/gocardless/callback.php</strong> and <strong>{$systemUrl}/modules/gateways/gocardless/redirect.php</strong> respectively in both the live and sandbox environments.<br /><br />A full guide to configuring WHMCS with GoCardless is available <a href='https://gocardless.com/partners/whmcs-detailed'>here</a>. For help, please email <a href='mailto:help@gocardless.com'>help@gocardless.com</a>."
             ),
             'merchant_id' => array(
                 'FriendlyName' => 'Merchant ID',
@@ -58,6 +58,11 @@
                 'FriendlyName' => 'Access Token',
                 'Type' => 'text',
                 'Size' => '100'
+            ),
+            'test_mode' => array(
+                'FriendlyName' => 'Sandbox Mode',
+                'Type' => 'yesno',
+                'Description' => 'Tick to enable the GoCardless sandbox environment where real payments will not be taken. You will need to have set the specific sandbox keys below.'
             ),
             'dev_merchant_id' => array(
                 'FriendlyName' => 'Sandbox Merchant ID',
@@ -84,11 +89,6 @@
                 'FriendlyName' => 'One Off Only',
                 'Type' => 'yesno',
                 'Description' => 'Tick to only perform one off captures - no recurring pre-authorization agreements will be created.'
-            ),
-            'test_mode' => array(
-                'FriendlyName' => 'Sandbox Mode',
-                'Type' => 'yesno',
-                'Description' => 'Tick to enable the GoCardless Sandbox environment where real payments will not be taken. You will need to have set the specific sandbox keys above.'
             )
         );
 
