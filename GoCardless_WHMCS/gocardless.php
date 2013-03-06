@@ -350,7 +350,7 @@
                             insert_query('mod_gocardless', array('invoiceid' => $params['invoiceid'], 'billcreated' => 1, 'resource_id' => $bill->id, 'preauth_id'  => $pre_auth->id));
                             addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
                             logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$bill->id.')Instant Paid: (Invoice #'.$params['invoiceid'].')' . print_r($bill, true), 'Successful');
-                            return array('status' => 'Bill Created', 'rawdata' => print_r($bill, true));
+                            return array('status' => 'success', 'rawdata' => print_r($bill, true));
                         } else {
                             # update the table with the bill ID
                             update_query('mod_gocardless', array('billcreated' => 1, 'resource_id' => $bill->id), array('invoiceid' => $params['invoiceid']));
@@ -360,7 +360,7 @@
                 } else {
                     # PreAuth could not be verified
                     logTransaction('GoCardless','Pre-Authorisation could not be verified','Incomplete');
-                    return array('status' => 'Pre-Authorisation could not be verified', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS'));
+                    return array('status' => 'error', 'rawdata' => array('message' => 'The pre-authorization ID was found for invoice ' . $params['invoiceid'] . ' but it could not be fetched.'));
                 }
 
 
@@ -369,7 +369,7 @@
                 # the client will have to setup a new preauth to begin recurring payments again
                 # or pay using an alternative method
                 logTransaction('GoCardless', 'No pre-authorisation found', 'Incomplete');
-                return array('status' => 'No Pre-auth Found', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS'));
+                return array('status' => 'error', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS for invoice ' . $params['invoiceid']));
             }
 
         } else {
@@ -378,6 +378,7 @@
             # logTransaction('GoCardless', 'Bill already created - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
             # return array('status' => 'Bill already created - awaiting update via web hook...', 'rawdata' =>
             #    array('message' => 'Bill already created - awaiting update via web hook...'));
+            return array('status' => 'success', 'rawdata' => array('message' => 'The bill has already been created for invoice ' . $params['invoiceid']));
         }
 
     }
