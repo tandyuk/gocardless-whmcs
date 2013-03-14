@@ -21,6 +21,11 @@ For help with using this module, contact the GoCardless support team at <help@go
 
 ## Changelog
 
+__v1.0.5__
+
+* Updates for compatability with
+[WHMCS Version 5.2](http://docs.whmcs.com/Version_5.2_Release_Notes)
+
 __v1.0.4__
 
 * Fixes an issue where the first payment amount differs from the recurring amount
