@@ -1,4 +1,4 @@
-![GoCardless](https://gocardless.com/resources/logo.png)
+![GoCardless](https://s3-eu-west-1.amazonaws.com/gocardless-logos/lo-res.jpg)
 
 ## GoCardless WHMCS Module
 
@@ -20,6 +20,11 @@ You must have WHMCS version 5.1.2 or later to use this WHMCS module.
 For help with using this module, contact the GoCardless support team at <help@gocardless.com>.
 
 ## Changelog
+
+__v1.0.5__
+
+* Updates for compatability with
+[WHMCS Version 5.2](http://docs.whmcs.com/Version_5.2_Release_Notes)
 
 __v1.0.4__
 

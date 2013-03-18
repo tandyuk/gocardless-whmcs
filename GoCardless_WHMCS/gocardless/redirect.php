@@ -5,13 +5,12 @@
     * This file confirms verifies a preauth and creates a bill underneath it
     * Either a one of payment (bill) or a pre authorisation can be handled by this file
     * @author WHMCS <info@whmcs.com>
-    * @version 1.0.4
+    * @version 1.0.5
     */
 
     # load all required files
     $whmcsdir = dirname(__FILE__) . '/../../../';
-    require_once $whmcsdir . 'dbconnect.php';
-    require_once $whmcsdir . '/includes/functions.php';
+    require_once $whmcsdir . 'init.php';
     require_once $whmcsdir . '/includes/gatewayfunctions.php';
     require_once $whmcsdir . '/includes/invoicefunctions.php';
     require_once $whmcsdir . '/modules/gateways/gocardless.php';
