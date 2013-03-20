@@ -10,8 +10,14 @@
 
     # load all required files
     $whmcsdir = dirname(__FILE__) . '/../../../';
+
     require_once $whmcsdir . 'dbconnect.php';
     require_once $whmcsdir . '/includes/functions.php';
+    // Looking for WHMCS 5.2 compatability? Comment the above two lines with
+    // "//" and then uncomment the line below:
+    //
+    // require_once $whmcsdir . 'init.php';
+
     require_once $whmcsdir . '/includes/gatewayfunctions.php';
     require_once $whmcsdir . '/includes/invoicefunctions.php';
     require_once $whmcsdir . '/modules/gateways/gocardless.php';
