@@ -154,19 +154,45 @@
                 break;
         }
 
-        # convert currency where necessary (GoCardless only handles GBP)
-        $aCurrency = getCurrency($res['userid']);
-        if($gateway['convertto'] && ($aCurrency['id'] != $gateway['convertto'])) {
-            # the users currency is not the same as the GoCardless currency, convert to the users currency
-            $oBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
-            $oBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
+        if($gateway['instantpaid'] == on) {
+            # The "Instant Activation" option is enabled, so we need to mark now
 
-            # currency conversion on the setup fee bill
+            # convert currency where necessary (GoCardless only handles GBP)
+            $aCurrency = getCurrency($res['userid']);
+            if($gateway['convertto'] && ($aCurrency['id'] != $gateway['convertto'])) {
+                # the users currency is not the same as the GoCardless currency, convert to the users currency
+                $oBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
+                $oBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
+
+                # currency conversion on the setup fee bill
+                if(isset($oSetupBill)) {
+                    $oSetupBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
+                    $oSetupBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
+
+                }
+            }
+
+            # check if we are handling a preauth setup fee
+            # if we are then we need to add it to the total bill
             if(isset($oSetupBill)) {
-                $oSetupBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
-                $oSetupBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
+                addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
+                logTransaction($gateway['paymentmethod'], 'Setup fee of ' . $oSetupBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oSetupBill->id, 'Successful')
+            }
+
+            # Log the payment for the amount of the main bill against the inovice
+            addInvoicePayment($invoiceID, $oBill->id, $oBill->amount, $oBill->gocardless_fees, $gateway['paymentmethod']);
+            logTransaction($gateway['paymentmethod'], 'Bill of ' . $oBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oBill->id, 'Successful');
+        } else {
+            # Instant activation isn't enabled, so we will log in the Gateway Log but will not put anything on the invoice
+
+            if(isset($oSetupBill)) {
+                logTransaction($gateway['paymentmethod'], 'Setup fee bill ' . $oSetupBill->id . ' (' . $oSetupBill->amount . ') and bill ' . $oBill->id . ' (' . $oBill->amount . ') raised with GoCardless for invoice ' . $invoiceID . ', but not marked on invoice.', 'Pending');
+            } else {
+                logTransaction($gateway['paymentmethod'], 'Bill ' . $oBill->id . ' (' . $oBill->amount . ') raised with GoCardless for invoice ' . $invoiceID . ', but not marked on invoice.', 'Pending');
             }
         }
+
+
 
         # check if we are handling a preauth setup fee
         # if we are then we need to add it to the total bill

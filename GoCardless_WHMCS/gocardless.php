@@ -85,6 +85,11 @@
                 'Type' => 'text',
                 'Size' => '100'
             ),
+            'instantpaid' => array(
+                'FriendlyName' => 'Instant Activation',
+                'Type' => 'yesno',
+                'Description' => 'Tick to immediately mark invoices paid after payment is initiated (despite clearing not being confirmed for 3-5 working days). With this enabled, payments can still fail later on, and in this event the invoice will be marked as "unpaid".'
+            ),
             'oneoffonly' => array(
                 'FriendlyName' => 'One Off Only',
                 'Type' => 'yesno',
@@ -288,6 +293,9 @@
         # create GoCardless DB if it hasn't already been created
         gocardless_createdb();
 
+        # grab the gateway information from WHMCS
+        $gateway = getGatewayVariables('gocardless');
+
         # Send the relevant API information to the GoCardless class for future processing
         gocardless_set_account_details($params);
 
@@ -335,7 +343,7 @@
                         # we failed to create a new bill, lets update mod_gocardless to alert the admin why payment hasnt been received,
                         # log this in the transaction log and exit out
                         update_query('mod_gocardless', array('payment_failed' => 1),array('invoiceid' => $params['invoiceid']));
-                        logTransaction($params['paymentmethod'],"Failed to create GoCardless bill: " . print_r($e,true) . print_r($bill,true),'Failed');
+                        logTransaction($params['paymentmethod'],"Failed to create GoCardless bill against pre-authorization " . $preauthid . " for invoice " . $params['invoiceid'] . ": " . print_r($e,true) . print_r($bill,true),'Failed');
                         return array('status' => 'error', 'rawdata' => $e);
                     }
 
@@ -345,11 +353,18 @@
                         # if not, we will create a new record and record the transaction
                         if (!mysql_num_rows($existing_payment_query)) {
                             # Add the bill ID to the table and mark the transaction as pending
-                            $gateway = getGatewayVariables('gocardless');
 
                             insert_query('mod_gocardless', array('invoiceid' => $params['invoiceid'], 'billcreated' => 1, 'resource_id' => $bill->id, 'preauth_id'  => $pre_auth->id));
-                            addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
-                            logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$bill->id.')Instant Paid: (Invoice #'.$params['invoiceid'].')' . print_r($bill, true), 'Successful');
+
+                            if ($gateway['instantpaid'] == on)  {
+                                # The Instant Activation option is on, so add to the Gateway Log and log a transaction on the invoice
+                                addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
+                                logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised and logged for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                            else {
+                                # Instant Activation is off, so just add to the gateway log and wait before marking as paid until web hook arrives
+                                logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                            }
+
                             return array('status' => 'success', 'rawdata' => print_r($bill, true));
                         } else {
                             # update the table with the bill ID
@@ -359,7 +374,7 @@
                     }
                 } else {
                     # PreAuth could not be verified
-                    logTransaction('GoCardless','Pre-Authorisation could not be verified','Incomplete');
+                    logTransaction($gateway['paymentmethod'], 'The pre-authorization specified for invoice ' . $params['invoiceid'] . ' (' . $preauthid . ') does not seem to exist - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
                     return array('status' => 'error', 'rawdata' => array('message' => 'The pre-authorization ID was found for invoice ' . $params['invoiceid'] . ' but it could not be fetched.'));
                 }
 
@@ -368,7 +383,7 @@
                 # we couldn't find the PreAuthID meaning at this point all we can do is give up!
                 # the client will have to setup a new preauth to begin recurring payments again
                 # or pay using an alternative method
-                logTransaction('GoCardless', 'No pre-authorisation found', 'Incomplete');
+                logTransaction($gateway['paymentmethod'], 'No pre-authorization found when trying to raise payment for invoice ' . $params['invoiceid'] . ' - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
                 return array('status' => 'error', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS for invoice ' . $params['invoiceid']));
             }
 
