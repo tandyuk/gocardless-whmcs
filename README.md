@@ -1,4 +1,4 @@
-![GoCardless](https://gocardless.com/resources/logo.png)
+![GoCardless](https://s3-eu-west-1.amazonaws.com/gocardless-logos/lo-res.jpg)
 
 ## GoCardless WHMCS Module
 
@@ -27,7 +27,8 @@ For help with using this module, contact the GoCardless support team at <help@go
 
 __v1.0.5__
 
-* Adds WHMCS v5.2 compatability
+* Updates for compatability with
+[WHMCS Version 5.2](http://docs.whmcs.com/Version_5.2_Release_Notes)
 
 __v1.0.4__
 
