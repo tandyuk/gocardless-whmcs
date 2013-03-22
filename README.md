@@ -8,6 +8,10 @@ The GoCardless WHMCS module provides a simple way to use GoCardless from within 
 
 You must have WHMCS version 5.1.2 or later to use this WHMCS module.
 
+### WHMCS 5.2 instructions
+
+WHMCS introduced some breaking changes for modules. To make this module compatible with v5.2, open both redirect.php and callback.php and follow the instructions in the first couple of lines of the file.
+
 ## Getting started
 
 1. [Download](https://github.com/gocardless/gocardless-whmcs/zipball/master) the latest version of the module.
@@ -20,6 +24,10 @@ You must have WHMCS version 5.1.2 or later to use this WHMCS module.
 For help with using this module, contact the GoCardless support team at <help@gocardless.com>.
 
 ## Changelog
+
+__v1.0.5__
+
+* Adds WHMCS v5.2 compatability
 
 __v1.0.4__
 
