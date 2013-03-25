@@ -182,7 +182,7 @@
             # if we are then we need to add it to the total bill
             if(isset($oSetupBill)) {
                 addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
-                logTransaction($gateway['paymentmethod'], 'Setup fee of ' . $oSetupBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oSetupBill->id, 'Successful')
+                logTransaction($gateway['paymentmethod'], 'Setup fee of ' . $oSetupBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oSetupBill->id, 'Successful');
             }
 
             # Log the payment for the amount of the main bill against the inovice
