@@ -393,7 +393,7 @@
             # logTransaction('GoCardless', 'Bill already created - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
             # return array('status' => 'Bill already created - awaiting update via web hook...', 'rawdata' =>
             #    array('message' => 'Bill already created - awaiting update via web hook...'));
-            return array('status' => 'success', 'rawdata' => array('message' => 'The bill has already been created for invoice ' . $params['invoiceid']));
+            return array('status' => 'pending', 'rawdata' => array('message' => 'The bill has already been created for invoice ' . $params['invoiceid']));
         }
 
     }
