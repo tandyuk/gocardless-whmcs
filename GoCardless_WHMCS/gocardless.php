@@ -360,12 +360,14 @@
                                 # The Instant Activation option is on, so add to the Gateway Log and log a transaction on the invoice
                                 addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
                                 logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised and logged for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                                return array('status' => 'success', 'rawdata' => print_r($bill, true));
                             } else {
                                 # Instant Activation is off, so just add to the gateway log and wait before marking as paid until web hook arrives
                                 logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                                return array('status' => 'pending', 'rawdata' => print_r($bill, true));
                             }
 
-                            return array('status' => 'success', 'rawdata' => print_r($bill, true));
+
                         } else {
                             # update the table with the bill ID
                             update_query('mod_gocardless', array('billcreated' => 1, 'resource_id' => $bill->id), array('invoiceid' => $params['invoiceid']));
