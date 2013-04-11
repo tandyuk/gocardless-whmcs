@@ -198,19 +198,6 @@
             }
         }
 
-
-
-        # check if we are handling a preauth setup fee
-        # if we are then we need to add it to the total bill
-        if(isset($oSetupBill)) {
-            addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
-        }
-
-        # add the payment to the invoice
-        addInvoicePayment($invoiceID, $oBill->id, $oBill->amount, $oBill->gocardless_fees, $gateway['paymentmethod']);
-        logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$oBill->id.')Instant Paid: (Invoice #'.$invoiceID.')' . print_r($oBill, true), 'Successful');
-
-
         # if we get to this point, we have verified everything we need to, redirect to invoice
         $systemURL = ($CONFIG['SystemSSLURL'] ? $CONFIG['SystemSSLURL'] : $CONFIG['SystemURL']);
         header('HTTP/1.1 303 See Other');
