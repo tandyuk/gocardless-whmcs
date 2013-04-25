@@ -220,7 +220,7 @@
         if ($preauthExists) {
             # The customer already has a pre-auth, but it's yet to be charged so
             # let's not let them set up another...
-            return (GoCardless::$environment == 'sandbox' ? '<strong style="color: #FF0000; font-size: 16px;">SANDBOX MODE</strong><br />' : null) . '<strong>Direct Debit payments via GoCardless are already configured for this invoice. You will receive an email once you have been billed.</strong>';
+            return (GoCardless::$environment == 'sandbox' ? '<strong style="color: #FF0000; font-size: 16px;">SANDBOX MODE</strong><br />' : null) . '<strong>Automatic payments via Direct Debit or another payment method are already configured for this invoice. You will receive an email once you have been billed.</strong>';
         }
         elseif ($noPreauth) {
             # if one of the $noPreauth conditions have been met, display a one time payment button
