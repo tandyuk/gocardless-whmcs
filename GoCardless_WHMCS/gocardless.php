@@ -3,13 +3,13 @@
     * GoCardless WHMCS module
     *
     * @author WHMCSRC <info@whmcs.com>
-    * @version 1.0.5
+    * @version 1.1.0
     */
 
     # load GoCardless library
     require_once ROOTDIR . '/modules/gateways/gocardless/GoCardless.php';
 
-    define('GC_VERSION', '1.0.5');
+    define('GC_VERSION', '1.1.0');
 
     function po($val,$kill=true) {
         echo '<pre>'.print_r($val,true);$kill ? exit : null;
@@ -36,7 +36,7 @@
             ),
             'UsageNotes' => array(
                 'Type' => 'System',
-                'Value' => "You must set your <strong>Webhook URI</strong> and <strong>Redirect URI</strong> within the 'Developer' tab on GoCardless to <strong>{$systemUrl}/modules/gateways/gocardless/callback.php</strong> and <strong>{$systemUrl}/modules/gateways/gocardless/redirect.php</strong> respectively.<br /><br />A full guide to configuring WHMCS with GoCardless is available <a href='https://gocardless.com/partners/whmcs-detailed'>here</a>. For help, please email <a href='mailto:help@gocardless.com'>help@gocardless.com</a>."
+                'Value' => "Please make sure your credentials are correct before saving.)<br /><br /><i>You're running GoCardless for WHMCS v" . GC_VERSION . ". You must set your <strong>Webhook URI</strong> and <strong>Redirect URI</strong> within the 'Developer' tab on GoCardless to <strong>{$systemUrl}/modules/gateways/gocardless/callback.php</strong> and <strong>{$systemUrl}/modules/gateways/gocardless/redirect.php</strong> respectively in both the live and sandbox environments.<br /><br />A full guide to configuring WHMCS with GoCardless is available <a href='https://gocardless.com/partners/whmcs-detailed'>here</a>. For help, please email <a href='mailto:help@gocardless.com'>help@gocardless.com</a>."
             ),
             'merchant_id' => array(
                 'FriendlyName' => 'Merchant ID',
@@ -59,6 +59,11 @@
                 'Type' => 'text',
                 'Size' => '100'
             ),
+            'test_mode' => array(
+                'FriendlyName' => 'Sandbox Mode',
+                'Type' => 'yesno',
+                'Description' => 'Tick to enable the GoCardless sandbox environment where real payments will not be taken. You will need to have set the specific sandbox keys below.'
+            ),
             'dev_merchant_id' => array(
                 'FriendlyName' => 'Sandbox Merchant ID',
                 'Type' => 'text',
@@ -80,25 +85,15 @@
                 'Type' => 'text',
                 'Size' => '100'
             ),
+            'instantpaid' => array(
+                'FriendlyName' => 'Instant Activation',
+                'Type' => 'yesno',
+                'Description' => 'Tick to immediately mark invoices paid after payment is initiated (despite clearing not being confirmed for 3-5 working days). With this enabled, payments can still fail later on, and in this event the invoice will be marked as "unpaid".'
+            ),
             'oneoffonly' => array(
                 'FriendlyName' => 'One Off Only',
                 'Type' => 'yesno',
                 'Description' => 'Tick to only perform one off captures - no recurring pre-authorization agreements will be created.'
-            ),
-            'instantpaid' => array(
-                'FriendlyName' => 'Instant Activation',
-                'Type' => 'yesno',
-                'Description' => 'Tick to immediately mark invoices paid after payment is initiated (despite clearing not being confirmed for 3-5 days). This means that the payment could still fail later on.'
-            ),
-            'test_mode' => array(
-                'FriendlyName' => 'Sandbox Mode',
-                'Type' => 'yesno',
-                'Description' => 'Tick to enable the GoCardless Sandbox environment where real payments will not be taken. You will need to have set the specific sandbox keys above.'
-            ),
-            'pre_auth_maximum' => array(
-                'FriendlyName' => 'Custom pre-authorization amount',
-                'Type' => 'text',
-                'Description' => 'Use a custom amount as the maximum for the pre-authorization used. This must be an <i>integer</i> or it will be ignored. <strong>Please speak to <a href=\'mailto:help@gocardless.com\'>GoCardless support</a> before using this option.</strong>'
             )
         );
 
@@ -211,8 +206,24 @@
             'billing_postcode'  => $params['clientdetails']['postcode'],
         );
 
-        # if one of the $noPreauth conditions have been met, display a one time payment button
-        if ($noPreauth) {
+        $invoice_item_query = select_query('tblinvoiceitems', 'relid', array('invoiceid' => $params['invoiceid'], 'type' => 'Hosting'));
+
+        while ($invoice_item = mysql_fetch_assoc($invoice_item_query)) {
+            $package_query = select_query('tblhosting', 'subscriptionid', array('id' => $invoice_item['relid']));
+            $package = mysql_fetch_assoc($package_query);
+
+            if (!empty($package['subscriptionid'])) {
+                $preauthExists = true;
+            }
+        }
+
+        if ($preauthExists) {
+            # The customer already has a pre-auth, but it's yet to be charged so
+            # let's not let them set up another...
+            return (GoCardless::$environment == 'sandbox' ? '<strong style="color: #FF0000; font-size: 16px;">SANDBOX MODE</strong><br />' : null) . '<strong>Automatic payments via Direct Debit or another payment method are already configured for this invoice. You will receive an email once you have been billed.</strong>';
+        }
+        elseif ($noPreauth) {
+            # if one of the $noPreauth conditions have been met, display a one time payment button
             # we are making a one off payment, display the appropriate code
             # Button title
             $title = 'Pay Now with GoCardless';
@@ -220,7 +231,7 @@
             # create GoCardless one off payment URL using the GoCardless library
             $url = GoCardless::new_bill_url(array(
                     'amount'  => $params['amount'],
-                    'name'    => $params['description'],
+                    'name'    => "Invoice #" . $params['invoiceid'],
                     'user'    => $aUser,
                     'state'   => $params['invoiceid'] . ':' . $params['amount']
                 ));
@@ -241,11 +252,7 @@
                 $aRecurrings['recurringcycleperiod'] = ($aRecurrings['recurringcycleperiod']*12);
             }
 
-            if (intval($params['pre_auth_maximum']) != 0) {
-              $pre_auth_maximum = intval($params['pre_auth_maximum']);
-            } else {
-              $pre_auth_maximum = $aRecurrings['recurringamount'];
-            }
+            $pre_auth_maximum = 5000; # Always create a £5000 pre-auth
 
             # Button title
             $title = 'Create Subscription with GoCardless';
@@ -255,12 +262,12 @@
                     'max_amount' => $pre_auth_maximum,
                     # set the setup fee as the first payment amount - recurring amount
                     'setup_fee' => ($aRecurrings['firstpaymentamount'] > $aRecurrings['recurringamount']) ? ($aRecurrings['firstpaymentamount']-$aRecurrings['recurringamount']) : 0,
-                    'name' => $params['description'],
+                    'name' => "Direct Debit payments to " . $CONFIG['CompanyName'],
                     'interval_length' => $aRecurrings['recurringcycleperiod'],
                     # convert $aRecurrings['recurringcycleunits'] to valid value e.g. day,month,year
                     'interval_unit' => $recurringcycleunit,
                     # set the start date to the creation date of the invoice - 2 days
-                    'start_at' => date_format(date_create($aInvoice['date'].' -2 days'),'Y-m-d'),
+                    'start_at' => date_format(date_create($aInvoice['date'].' -2 days'),'Y-m-d\TH:i:sO'),
                     'user' => $aUser,
                     'state' => $params['invoiceid'] . ':' . $aRecurrings['recurringamount']
                 ));
@@ -285,6 +292,9 @@
 
         # create GoCardless DB if it hasn't already been created
         gocardless_createdb();
+
+        # grab the gateway information from WHMCS
+        $gateway = getGatewayVariables('gocardless');
 
         # Send the relevant API information to the GoCardless class for future processing
         gocardless_set_account_details($params);
@@ -325,12 +335,15 @@
 
                     # Create a bill with the $pre_auth object
                     try {
-                        $bill = $pre_auth->create_bill(array('amount' => $params['amount']));
+                        $bill = $pre_auth->create_bill(array(
+                            'amount' => $params['amount'],
+                            'name' => "Invoice #" . $params['invoiceid']
+                        ));
                     } catch (Exception $e) {
                         # we failed to create a new bill, lets update mod_gocardless to alert the admin why payment hasnt been received,
                         # log this in the transaction log and exit out
                         update_query('mod_gocardless', array('payment_failed' => 1),array('invoiceid' => $params['invoiceid']));
-                        logTransaction($params['paymentmethod'],"Failed to create GoCardless bill: " . print_r($e,true) . print_r($bill,true),'Failed');
+                        logTransaction($params['paymentmethod'],"Failed to create GoCardless bill against pre-authorization " . $preauthid . " for invoice " . $params['invoiceid'] . ": " . print_r($e,true) . print_r($bill,true),'Failed');
                         return array('status' => 'error', 'rawdata' => $e);
                     }
 
@@ -340,9 +353,21 @@
                         # if not, we will create a new record and record the transaction
                         if (!mysql_num_rows($existing_payment_query)) {
                             # Add the bill ID to the table and mark the transaction as pending
+
                             insert_query('mod_gocardless', array('invoiceid' => $params['invoiceid'], 'billcreated' => 1, 'resource_id' => $bill->id, 'preauth_id'  => $pre_auth->id));
-                            logTransaction('GoCardless', 'Transaction initiated successfully, confirmation will take 2-5 days' . "\nPreAuth: " . $pre_auth->id . "\nBill ID: " . $bill->id, 'Pending');
-                            return array('status' => 'Bill Created', 'rawdata' => $bill);
+
+                            if ($gateway['instantpaid'] == on)  {
+                                # The Instant Activation option is on, so add to the Gateway Log and log a transaction on the invoice
+                                addInvoicePayment($params['invoiceid'], $bill->id, $bill->amount, $bill->gocardless_fees, $gateway['paymentmethod']);
+                                logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised and logged for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                                return array('status' => 'success', 'rawdata' => print_r($bill, true));
+                            } else {
+                                # Instant Activation is off, so just add to the gateway log and wait before marking as paid until web hook arrives
+                                logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
+                                return array('status' => 'pending', 'rawdata' => print_r($bill, true));
+                            }
+
+
                         } else {
                             # update the table with the bill ID
                             update_query('mod_gocardless', array('billcreated' => 1, 'resource_id' => $bill->id), array('invoiceid' => $params['invoiceid']));
@@ -351,8 +376,8 @@
                     }
                 } else {
                     # PreAuth could not be verified
-                    logTransaction('GoCardless','Pre-Authorisation could not be verified','Incomplete');
-                    return array('status' => 'Pre-Authorisation could not be verified', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS'));
+                    logTransaction($gateway['paymentmethod'], 'The pre-authorization specified for invoice ' . $params['invoiceid'] . ' (' . $preauthid . ') does not seem to exist - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
+                    return array('status' => 'error', 'rawdata' => array('message' => 'The pre-authorization ID was found for invoice ' . $params['invoiceid'] . ' but it could not be fetched.'));
                 }
 
 
@@ -360,16 +385,17 @@
                 # we couldn't find the PreAuthID meaning at this point all we can do is give up!
                 # the client will have to setup a new preauth to begin recurring payments again
                 # or pay using an alternative method
-                logTransaction('GoCardless', 'No pre-authorisation found', 'Incomplete');
-                return array('status' => 'No Pre-auth Found', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS'));
+                logTransaction($gateway['paymentmethod'], 'No pre-authorization found when trying to raise payment for invoice ' . $params['invoiceid'] . ' - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
+                return array('status' => 'error', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS for invoice ' . $params['invoiceid']));
             }
 
         } else {
             # WHMCS is trying to collect the bill but one has already been created - this happens because the bill is not mark as 'paid'
             # until a web hook is received by default, so WHMCS thinks it still needs to collect.
-            logTransaction('GoCardless', 'Bill already created - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
-            return array('status' => 'Bill already created - awaiting update via web hook...', 'rawdata' =>
-                array('message' => 'Bill already created - awaiting update via web hook...'));
+            # logTransaction('GoCardless', 'Bill already created - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
+            # return array('status' => 'Bill already created - awaiting update via web hook...', 'rawdata' =>
+            #    array('message' => 'Bill already created - awaiting update via web hook...'));
+            return array('status' => 'pending', 'rawdata' => array('message' => 'The bill has already been created for invoice ' . $params['invoiceid']));
         }
 
     }

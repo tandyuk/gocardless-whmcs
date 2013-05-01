@@ -4,7 +4,7 @@
     * GoCardless WHMCS module
     *
     * @author WHMCS <info@whmcs.com>
-    * @version 1.0.5
+    * @version 1.1.0
     */
 
     # load all required files
@@ -105,10 +105,15 @@
                             $aBill['fees']   = convertCurrency($aBill['fees'],$gateway['convertto'],$aCurrency['id']);
                         }
 
+
                         # if we get to this point, we have verified the callback and performed sanity checks
                         # add a payment to the invoice and create a transaction log
-                        addInvoicePayment($invoiceID, $aBill['id'], $aBill['amount'], $aBill['fees'], $gateway['paymentmethod']);
-                        logTransaction($gateway['paymentmethod'], 'Bill payment completed ('.$aBill['id'].'). Invoice #'.$invoiceID, 'Successful');
+
+                        if ($gateway['instantpaid'] == 'off') {
+                            # No invoice payment will have been recorded yet, so now we'll record it
+                            addInvoicePayment($invoiceID, $aBill['id'], $aBill['amount'], $aBill['fees'], $gateway['paymentmethod']);
+                        }
+                        logTransaction($gateway['paymentmethod'], 'The bill '.$aBill['id'].' for invoice #'.$invoiceID . 'has been successfully marked as paid.', 'Successful');
 
                         # clean up for next loop
                         unset($invoiceID,$userID);

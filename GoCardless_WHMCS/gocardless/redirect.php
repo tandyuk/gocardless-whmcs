@@ -5,7 +5,7 @@
     * This file confirms verifies a preauth and creates a bill underneath it
     * Either a one of payment (bill) or a pre authorisation can be handled by this file
     * @author WHMCS <info@whmcs.com>
-    * @version 1.0.5
+    * @version 1.1.0
     */
 
     # load all required files
@@ -90,17 +90,23 @@
 
             # check if we have a setup_fee
             $setup_id = false;
+            $setup_amount = 0;
             if($pre_auth->setup_fee > 0) {
                 # store the bill in $oSetupBill for later user
                 $aoSetupBills = $pre_auth->bills();
                 $oSetupBill = $aoSetupBills[0];
                 $setup_id = $oSetupBill->id;
+                $setup_amount = $oSetupBill->amount;
                 unset($aoSetupBills);
             }
 
             # create a GoCardless bill and store it in $bill
             try {
-                $oBill = $pre_auth->create_bill(array('amount' => $invoiceAmount));
+                $amount_to_charge = $invoiceAmount - $setup_amount;
+                $oBill = $pre_auth->create_bill(array(
+                    'amount' => $amount_to_charge,
+                    'name' => "Invoice #" . $invoiceID
+                ));
             } catch (Exception $e) {
                 # log that we havent been able to create the bill and exit out
                 logTransaction($gateway['paymentmethod'],'Failed to create new bill: ' . print_r($e,true),'GoCardless Error');
@@ -154,8 +160,8 @@
                 break;
         }
 
-        # check if we should be marking the bill as paid instantly
-        if($gateway['instantpaid'] == 'on') {
+        if($gateway['instantpaid'] == on) {
+            # The "Instant Activation" option is enabled, so we need to mark now
 
             # convert currency where necessary (GoCardless only handles GBP)
             $aCurrency = getCurrency($res['userid']);
@@ -168,6 +174,7 @@
                 if(isset($oSetupBill)) {
                     $oSetupBill->amount = convertCurrency($oBill->amount,$gateway['convertto'],$aCurrency['id']);
                     $oSetupBill->gocardless_fee = convertCurrency($oBill->gocardless_fee,$gateway['convertto'],$aCurrency['id']);
+
                 }
             }
 
@@ -175,14 +182,20 @@
             # if we are then we need to add it to the total bill
             if(isset($oSetupBill)) {
                 addInvoicePayment($invoiceID, $oSetupBill->id, $oSetupBill->amount, $oSetupBill->gocardless_fees, $gateway['paymentmethod']);
+                logTransaction($gateway['paymentmethod'], 'Setup fee of ' . $oSetupBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oSetupBill->id, 'Successful');
             }
 
-            # add the payment to the invoice
+            # Log the payment for the amount of the main bill against the inovice
             addInvoicePayment($invoiceID, $oBill->id, $oBill->amount, $oBill->gocardless_fees, $gateway['paymentmethod']);
-            logTransaction($gateway['paymentmethod'], 'GoCardless Bill ('.$oBill->id.')Instant Paid: (Invoice #'.$invoiceID.')' . print_r($oBill, true), 'Successful');
+            logTransaction($gateway['paymentmethod'], 'Bill of ' . $oBill->amount . ' raised and logged for invoice ' . $invoiceID . ' with GoCardless ID ' . $oBill->id, 'Successful');
         } else {
-            # log payment as pending
-            logTransaction($gateway['paymentmethod'],'GoCardless Bill ('.$oBill->id.') Pending. Invoice #' . $invoiceID,'Pending');
+            # Instant activation isn't enabled, so we will log in the Gateway Log but will not put anything on the invoice
+
+            if(isset($oSetupBill)) {
+                logTransaction($gateway['paymentmethod'], 'Setup fee bill ' . $oSetupBill->id . ' (' . $oSetupBill->amount . ') and bill ' . $oBill->id . ' (' . $oBill->amount . ') raised with GoCardless for invoice ' . $invoiceID . ', but not marked on invoice.', 'Pending');
+            } else {
+                logTransaction($gateway['paymentmethod'], 'Bill ' . $oBill->id . ' (' . $oBill->amount . ') raised with GoCardless for invoice ' . $invoiceID . ', but not marked on invoice.', 'Pending');
+            }
         }
 
         # if we get to this point, we have verified everything we need to, redirect to invoice
