@@ -1,5 +1,16 @@
 ![GoCardless](https://s3-eu-west-1.amazonaws.com/gocardless-logos/lo-res.jpg)
 
+# Announcement
+
+__As of 15th August 2013, the GoCardless WHMCS module will no longer be supported.__
+You are, however, welcome to continue using the module indefinitely. 
+
+If changes to WHMCS break the module, it is likely that we will release fixes,
+but technical assistance will not be available.
+
+The module is open source, so anyone is welcome to modify and distribute the
+module as they see fit.
+
 ## GoCardless WHMCS Module
 
 The GoCardless WHMCS module provides a simple way to use GoCardless from within WHMCS.
