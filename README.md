@@ -34,7 +34,14 @@ instructions in the first couple of lines of the file.
 
 ## Support
 
-For help with using this module, contact the GoCardless support team at <help@gocardless.com>.
+__As of 15th August 2013, the GoCardless WHMCS module will no longer be supported.__
+You are, however, welcome to continue using the module indefinitely. 
+
+If changes to WHMCS break the module, it is likely that we will release fixes,
+but technical assistance will not be available.
+
+The module is open source, so anyone is welcome to modify and distribute the
+module as they see fit.
 
 ## Changelog
 
