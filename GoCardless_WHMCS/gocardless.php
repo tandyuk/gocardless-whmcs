@@ -3,13 +3,14 @@
     * GoCardless WHMCS module
     *
     * @author WHMCSRC <info@whmcs.com>
-    * @version 1.1.0
+	* @author TandyUK Servers <admin@tandyukservers.co.uk>
+    * @version 1.1.1
     */
 
     # load GoCardless library
     require_once ROOTDIR . '/modules/gateways/gocardless/GoCardless.php';
 
-    define('GC_VERSION', '1.1.0');
+    define('GC_VERSION', '1.1.1');
 
     function po($val,$kill=true) {
         echo '<pre>'.print_r($val,true);$kill ? exit : null;
@@ -94,7 +95,12 @@
                 'FriendlyName' => 'One Off Only',
                 'Type' => 'yesno',
                 'Description' => 'Tick to only perform one off captures - no recurring pre-authorization agreements will be created.'
-            )
+			),
+			'preauthonly' => array(
+				'FriendlyName' => 'PreAuth Only',
+				'Type' => 'yesno',
+				'Description' => 'Tick to only create pre-authorization agreements, even for one off payments.'
+			)
         );
 
         return $aConfig;
@@ -181,15 +187,21 @@
         # get relevant invoice data
         $aRecurrings = getRecurringBillingValues($params['invoiceid']);
         $recurringcycleunit = strtolower(substr($aRecurrings['recurringcycleunits'],0,-1));
-
-        # check a number of conditions to see if it is possible to setup a preauth
+		
+		# check a number of conditions to see if it is possible to setup a preauth
         if(($params['oneoffonly'] == 'on') ||
             ($aRecurrings === false) ||
             ($aRecurrings['recurringamount'] <= 0)) {
             $noPreauth = true;
-        } else {
+        }else {
             $noPreauth = false;
         }
+		
+		#check whether we are configured to only create pre-auths.
+		if($params['preauthonly'] == 'on'){
+			$noPreauth = false;
+		}
+		
 
         # set appropriate GoCardless API details
         gocardless_set_account_details($params);
@@ -216,6 +228,25 @@
                 $preauthExists = true;
             }
         }
+
+
+		#check for client wide DD auth
+		if(!$preauthExists){
+			#get client id and custom field id
+			$customfieldid = get_query_val("tblcustomfields","id",array("type"=>"client","fieldname"=>"GoCardless DD Auth ID"));
+			$userid = get_query_val("tblinvoices","userid",array("id"=>(int)$params['invoiceid']));
+			if($customfieldid && $userid){
+				#check if the client has a client wide Pre-auth ID set.
+				$preauthid = get_query_val("tblcustomfieldsvalues","value",array("fieldid"=>(int)$customfieldid,"relid"=>(int)$userid),"value","ASC","");
+				if (!empty($preauthid)) {
+               		$preauthExists = true;
+           		}
+			}
+		}
+
+
+
+
 
         if ($preauthExists) {
             # The customer already has a pre-auth, but it's yet to be charged so
@@ -263,9 +294,9 @@
                     # set the setup fee as the first payment amount - recurring amount
                     'setup_fee' => ($aRecurrings['firstpaymentamount'] > $aRecurrings['recurringamount']) ? ($aRecurrings['firstpaymentamount']-$aRecurrings['recurringamount']) : 0,
                     'name' => "Direct Debit payments to " . $CONFIG['CompanyName'],
-                    'interval_length' => $aRecurrings['recurringcycleperiod'],
+                    'interval_length' => (isset($aRecurrings['recurringcycleperiod'])?$aRecurrings['recurringcycleperiod']:1),
                     # convert $aRecurrings['recurringcycleunits'] to valid value e.g. day,month,year
-                    'interval_unit' => $recurringcycleunit,
+                    'interval_unit' => (($recurringcycleunit!=="")?$recurringcycleunit:'month'),
                     # set the start date to the creation date of the invoice - 2 days
                     'start_at' => date_format(date_create($aInvoice['date'].' -2 days'),'Y-m-d\TH:i:sO'),
                     'user' => $aUser,
@@ -318,10 +349,25 @@
                 $package = mysql_fetch_assoc($package_query);
 
                 # if we have found a subscriptionID, store it in $preauthid
+				# Note: Product/Service level Subscription ID overrides client level DD preauth ID
                 if (!empty($package['subscriptionid'])) {
                     $preauthid = $package['subscriptionid'];
                 }
             }
+
+			#check for client wide DD auth
+			if(!$preauthid){
+				#get client id and custom field id
+				$customfieldid = get_query_val("tblcustomfields","id",array("type"=>"client","fieldname"=>"GoCardless DD Auth ID"));
+				$userid = get_query_val("tblinvoices","userid",array("id"=>(int)$params['invoiceid']));
+				if($customfieldid && $userid){
+					#check if the client has a client wide Pre-auth ID set.
+					$preauthid = get_query_val("tblcustomfieldsvalues","value",array("fieldid"=>(int)$customfieldid,"relid"=>(int)$userid),"value","ASC","");
+				}
+			}
+
+
+
 
             # now we are out of the loop, check if we have been able to get the PreAuth ID
             if (isset($preauthid)) {
@@ -364,19 +410,23 @@
                             } else {
                                 # Instant Activation is off, so just add to the gateway log and wait before marking as paid until web hook arrives
                                 logTransaction($gateway['paymentmethod'], 'Bill of ' . $bill->amount . ' raised for invoice ' . $params['invoiceid'] . ' with GoCardless ID ' . $bill->id, 'Successful');
-                                return array('status' => 'pending', 'rawdata' => print_r($bill, true));
+                                return "success";
                             }
 
 
                         } else {
                             # update the table with the bill ID
                             update_query('mod_gocardless', array('billcreated' => 1, 'resource_id' => $bill->id), array('invoiceid' => $params['invoiceid']));
+							return "success";
                         }
 
                     }
                 } else {
                     # PreAuth could not be verified
                     logTransaction($gateway['paymentmethod'], 'The pre-authorization specified for invoice ' . $params['invoiceid'] . ' (' . $preauthid . ') does not seem to exist - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
+					
+ #@TODO:  fire off 'please (re) setup DD here email template'
+					
                     return array('status' => 'error', 'rawdata' => array('message' => 'The pre-authorization ID was found for invoice ' . $params['invoiceid'] . ' but it could not be fetched.'));
                 }
 
@@ -386,16 +436,22 @@
                 # the client will have to setup a new preauth to begin recurring payments again
                 # or pay using an alternative method
                 logTransaction($gateway['paymentmethod'], 'No pre-authorization found when trying to raise payment for invoice ' . $params['invoiceid'] . ' - something has gone wrong, or the customer needs to set up their Direct Debit again.', 'Incomplete');
+ 
+ 
+ #@TODO:  fire off 'please (re) setup DD here email template'
+ 
                 return array('status' => 'error', 'rawdata' => array('message' => 'No pre-authorisation ID found in WHMCS for invoice ' . $params['invoiceid']));
+ 
             }
 
         } else {
             # WHMCS is trying to collect the bill but one has already been created - this happens because the bill is not mark as 'paid'
             # until a web hook is received by default, so WHMCS thinks it still needs to collect.
-            # logTransaction('GoCardless', 'Bill already created - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
+            logTransaction($gateway['paymentmethod'], 'Bill already created for invoice ' . $params['invoiceid'] . ' - awaiting update via web hook...' . "\nBill ID: " . $existing_payment['resource_id'], 'Pending');
             # return array('status' => 'Bill already created - awaiting update via web hook...', 'rawdata' =>
             #    array('message' => 'Bill already created - awaiting update via web hook...'));
-            return array('status' => 'pending', 'rawdata' => array('message' => 'The bill has already been created for invoice ' . $params['invoiceid']));
+            //return array('status' => 'pending', 'rawdata' => array('message' => 'The bill has already been createdfor invoice ' . $params['invoiceid']));
+			return "pending";
         }
 
     }
@@ -441,6 +497,16 @@
 
             full_query($query);
         }
+		
+		#check for, and create if needed, the client custom field to store DD Auth ID.
+		$customfieldid = get_query_val("tblcustomfields","id",array("type"=>"client","fieldname"=>"GoCardless DD Auth ID"));
+		if (!$customfieldid){
+		    $customfieldid = insert_query("tblcustomfields",array("type"=>"client","relid"=>0,"fieldname"=>"GoCardless DD Auth ID","fieldtype"=>"text","description"=>"Direct Debit Authorisation ID to use for all direct debit payments. This field can be overridden by providing a subscription ID for each product.","fieldoptions"=>"","regexpr"=>"","adminonly"=>"on","required"=>"","showorder"=>"","showinvoice"=>"","sortorder"=>0));
+		}
+
+		
+		
+		
     }
 
     /**

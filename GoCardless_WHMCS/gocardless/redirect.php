@@ -5,18 +5,20 @@
     * This file confirms verifies a preauth and creates a bill underneath it
     * Either a one of payment (bill) or a pre authorisation can be handled by this file
     * @author WHMCS <info@whmcs.com>
-    * @version 1.1.0
+	* @author TandyUK Servers <admin@tandyukservers.co.uk>
+    * @version 1.1.1
     */
 
     # load all required files
     $whmcsdir = dirname(__FILE__) . '/../../../';
 
-    require_once $whmcsdir . 'dbconnect.php';
-    require_once $whmcsdir . '/includes/functions.php';
-    // Looking for WHMCS 5.2 compatability? Comment the above two lines with
-    // "//" and then uncomment the line below:
-    //
-    // require_once $whmcsdir . 'init.php';
+    //require_once $whmcsdir . 'dbconnect.php';
+    //require_once $whmcsdir . '/includes/functions.php';
+    // Looking for PRE WHMCS 5.2 compatability? UN Comment the above two lines with
+    // "//" and then comment the line below:
+    require_once $whmcsdir . 'init.php';
+	//If you need to do this, you should REALLY consider upgrading your WHMCS install, as several 'critical' security vulnerablities have been fixed post 5.2.
+	
 
     require_once $whmcsdir . '/includes/gatewayfunctions.php';
     require_once $whmcsdir . '/includes/invoicefunctions.php';

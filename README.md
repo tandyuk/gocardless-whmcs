@@ -1,4 +1,4 @@
-![GoCardless](https://s3-eu-west-1.amazonaws.com/gocardless-logos/lo-res.jpg)
+﻿![GoCardless](https://s3-eu-west-1.amazonaws.com/gocardless-logos/lo-res.jpg)
 
 # Announcement
 
@@ -44,6 +44,17 @@ The module is open source, so anyone is welcome to modify and distribute the
 module as they see fit.
 
 ## Changelog
+
+__v1.1.1__
+
+* Updated GoCardless API to v0.4.2
+* Added config option "PreAuth Only". This option is mutually exclusive with "one off only", and will result in a pre-authorization agreement beign created for all payments, including one off payments. Leave unchecked to retain current operation where a pre-auth is only created for 
+* Multiple changes to the _link and _capture functions to avoid erroneously sending "Credit Card Payment Failed" email alerts when a payment is still pending
+* Added WHMCS Client Custom Field "GoCardless DD Auth ID" to support client-wide direct debit authorisation. Previously this was set at a per service level. If a "Subscription ID" is set for a product/service, this will override the client-wide authorisation ID.
+
+
+
+
 
 __v1.1.0__
 
