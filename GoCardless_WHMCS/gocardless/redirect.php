@@ -6,7 +6,7 @@
     * Either a one of payment (bill) or a pre authorisation can be handled by this file
     * @author WHMCS <info@whmcs.com>
 	* @author TandyUK Servers <admin@tandyukservers.co.uk>
-    * @version 1.1.1
+    * @version 1.1.2
     */
 
     # load all required files
@@ -87,67 +87,90 @@
 
             case "pre_authorization":
 
-            # get the confirmed resource (pre_auth) and created a referenced param $pre_auth
-            $pre_auth = &$confirmed_resource;
+	            # get the confirmed resource (pre_auth) and created a referenced param $pre_auth
+	            $pre_auth = &$confirmed_resource;
 
-            # check if we have a setup_fee
-            $setup_id = false;
-            $setup_amount = 0;
-            if($pre_auth->setup_fee > 0) {
-                # store the bill in $oSetupBill for later user
-                $aoSetupBills = $pre_auth->bills();
-                $oSetupBill = $aoSetupBills[0];
-                $setup_id = $oSetupBill->id;
-                $setup_amount = $oSetupBill->amount;
-                unset($aoSetupBills);
-            }
+	            # check if we have a setup_fee
+	            $setup_id = false;
+	            $setup_amount = 0;
+	            if($pre_auth->setup_fee > 0) {
+	                # store the bill in $oSetupBill for later user
+	                $aoSetupBills = $pre_auth->bills();
+	                $oSetupBill = $aoSetupBills[0];
+	                $setup_id = $oSetupBill->id;
+	                $setup_amount = $oSetupBill->amount;
+	                unset($aoSetupBills);
+	            }
 
-            # create a GoCardless bill and store it in $bill
-            try {
-                $amount_to_charge = $invoiceAmount - $setup_amount;
-                $oBill = $pre_auth->create_bill(array(
-                    'amount' => $amount_to_charge,
-                    'name' => "Invoice #" . $invoiceID
-                ));
-            } catch (Exception $e) {
-                # log that we havent been able to create the bill and exit out
-                logTransaction($gateway['paymentmethod'],'Failed to create new bill: ' . print_r($e,true),'GoCardless Error');
-                exit('Your request could not be completed');
-            }
+	            # create a GoCardless bill and store it in $bill
+	            try {
+	                $amount_to_charge = $invoiceAmount - $setup_amount;
+	                $oBill = $pre_auth->create_bill(array(
+	                    'amount' => $amount_to_charge,
+	                    'name' => "Invoice #" . $invoiceID
+	                ));
+	            } catch (Exception $e) {
+	                # log that we havent been able to create the bill and exit out
+	                logTransaction($gateway['paymentmethod'],'Failed to create new bill: ' . print_r($e,true),'GoCardless Error');
+	                exit('Your request could not be completed');
+	            }
 
-			try {
-				# if we have been able to create the bill, the preauth ID being null suggests payment is pending
-				# (this will display in the admin)
-				if ($oBill->id) {
-                    if($setup_id) {
-                        # if we have a setup ID, we want to insert this into the query
-                        if(!insert_query('mod_gocardless', array('invoiceid' => $invoiceID, 'billcreated' => 1, 'resource_id' => $oBill->id, 'setup_id' => $setup_id, 'preauth_id' => $pre_auth->id))) {
-                            throw new Exception('Failed to record new mod_gocardless record for bill #'.$oBill->id);
-                        }
-                    } else {
-                        # no setup ID bill
-                        if(!insert_query('mod_gocardless', array('invoiceid' => $invoiceID, 'billcreated' => 1, 'resource_id' => $oBill->id, 'preauth_id' => $pre_auth->id))) {
-                            throw new Exception('Failed to record new mod_gocardless record for bill #'.$oBill->id);
-                        }
-                    }
-				} else {
-					throw new Exception('Could not create GoCardless bill on Preauth #'.$pre_auth->id);
+				try {
+					# if we have been able to create the bill, the preauth ID being null suggests payment is pending
+					# (this will display in the admin)
+					if ($oBill->id) {
+	                    if($setup_id) {
+	                        # if we have a setup ID, we want to insert this into the query
+	                        if(!insert_query('mod_gocardless', array('invoiceid' => $invoiceID, 'billcreated' => 1, 'resource_id' => $oBill->id, 'setup_id' => $setup_id, 'preauth_id' => $pre_auth->id))) {
+	                            throw new Exception('Failed to record new mod_gocardless record for bill #'.$oBill->id);
+	                        }
+	                    } else {
+	                        # no setup ID bill
+	                        if(!insert_query('mod_gocardless', array('invoiceid' => $invoiceID, 'billcreated' => 1, 'resource_id' => $oBill->id, 'preauth_id' => $pre_auth->id))) {
+	                            throw new Exception('Failed to record new mod_gocardless record for bill #'.$oBill->id);
+	                        }
+	                    }
+					} else {
+						throw new Exception('Could not create GoCardless bill on Preauth #'.$pre_auth->id);
+					}
+				} catch (Exception $e) {
+					logTransaction($gateway['paymentmethod'],$e->getMessage().'Exception Details: ' . print_r($e,true)."\r\nBill Details: " . print_r($oBill,true) . "\r\nInvoice #".$invoiceID);
+					exit('Failed to record transaction, please contact support for more details.');
 				}
-			} catch (Exception $e) {
-				logTransaction($gateway['paymentmethod'],$e->getMessage().'Exception Details: ' . print_r($e,true)."\r\nBill Details: " . print_r($oBill,true) . "\r\nInvoice #".$invoiceID);
-				exit('Failed to record transaction, please contact support for more details.');
-			}
 
-            # query tblinvoiceitems to get the related service ID
-            # update subscription ID with the resource ID on all hosting services corresponding with the invoice
-            $d = select_query('tblinvoiceitems', 'relid', array('type' => 'Hosting', 'invoiceid' => $invoiceID));
-            while ($res = mysql_fetch_assoc($d)) {
-                update_query('tblhosting', array('subscriptionid' => $pre_auth->id), array('id' => $res['relid']));
-            }
-
-            # clean up
-            unset($d,$res);
-            break;
+				#update customer wide pre-auth?
+				#check whether we are configured to only create pre-auths.
+				if($gateway['preauthonly'] == 'on'){
+					$customfieldid = get_query_val("tblcustomfields","id",array("type"=>"client","fieldname"=>"GoCardless DD Auth ID"));
+					$userid = get_query_val("tblinvoices","userid",array("id"=>(int)$invoiceID));
+					if($customfieldid && $userid){
+						#check if the client has a client wide Pre-auth ID set.
+						$preauthid = get_query_val("tblcustomfieldsvalues","value",array("fieldid"=>(int)$customfieldid,"relid"=>(int)$userid),"value","ASC","");
+						if (!empty($preauthid)) {
+		               		$preauthExists = true;
+	    	       		}
+					}
+				
+					if($preauthExists){
+						# update existing pre-auth id with new one
+						update_query('tblcustomfieldsvalues',array('value' => $pre_auth->id),array('fieldid' => (int)$customfieldid,'relid'=>(int)$userid));
+						logTransaction($gateway['paymentmethod'],'Updated Pre-auth ID for client ' . $userid . ' from: ' . $preauthid." to: " . $pre_auth->id);
+					}else{
+						# add new pre-auth id to client records
+						insert_query('tblcustomfieldsvalues',array('value' => $pre_auth->id,'fieldid' => (int)$customfieldid,'relid'=>(int)$userid));
+						logTransaction($gateway['paymentmethod'],'Added Pre-auth ID for client ' . $userid . ': ' . $pre_auth->id);
+					}
+				}else{
+	        	    # query tblinvoiceitems to get the related service ID
+	            	# update subscription ID with the resource ID on all hosting services corresponding with the invoice
+					$d = select_query('tblinvoiceitems', 'relid', array('type' => 'Hosting', 'invoiceid' => $invoiceID));
+	            	while ($res = mysql_fetch_assoc($d)) {
+	                	update_query('tblhosting', array('subscriptionid' => $pre_auth->id), array('id' => $res['relid']));
+					}
+	    	        # clean up
+	        	    unset($d,$res);
+				}
+			break;
 
             case 'bill':
                 # the response is a one time bill, we need to add the bill to the database

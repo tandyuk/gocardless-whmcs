@@ -45,16 +45,18 @@ module as they see fit.
 
 ## Changelog
 
+__v1.1.2__
+
+* Fixed a bug with client-wide direct debit authorisation ids not being saved properly.
+* Implemented changes to support cancellations of client-wide authorisations.
+* Improved logging of auth create/charge/cancellations.
+
 __v1.1.1__
 
 * Updated GoCardless API to v0.4.2
 * Added config option "PreAuth Only". This option is mutually exclusive with "one off only", and will result in a pre-authorization agreement beign created for all payments, including one off payments. Leave unchecked to retain current operation where a pre-auth is only created for 
 * Multiple changes to the _link and _capture functions to avoid erroneously sending "Credit Card Payment Failed" email alerts when a payment is still pending
 * Added WHMCS Client Custom Field "GoCardless DD Auth ID" to support client-wide direct debit authorisation. Previously this was set at a per service level. If a "Subscription ID" is set for a product/service, this will override the client-wide authorisation ID.
-
-
-
-
 
 __v1.1.0__
 

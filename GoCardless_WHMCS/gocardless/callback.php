@@ -5,7 +5,7 @@
     *
     * @author WHMCS <info@whmcs.com>
 	* @author TandyUK Servers <admin@tandyukservers.co.uk>
-    * @version 1.1.1
+    * @version 1.1.2
     */
 
     # load all required files
@@ -59,10 +59,19 @@
             case 'expired':
                 # delete related preauths
                 foreach ($val['pre_authorizations'] as $aPreauth) {
-                    # find preauth in tblhosting and empty out the subscriptionid field
-                    update_query('tblhosting',array('subscriptionid' => ''),array('subscriptionid'    => $aPreauth['id']));
-                    # log each preauth that has been cancelled
-                    logTransaction($gateway['paymentmethod'],'GoCardless Preauthorisation Cancelled ('.$aPreauth['id'].')','Cancelled');
+ 	 				#update customer wide pre-auth?
+					#check whether we are configured to only create pre-auths.
+					if($gateway['preauthonly'] == 'on'){
+						$customfieldid = get_query_val("tblcustomfields","id",array("type"=>"client","fieldname"=>"GoCardless DD Auth ID"));
+						$userid = get_query_val("tblcustomfieldsvalues","relid",array("fieldid"=>(int)$customfieldid,"value"=>$aPreauth['id']));
+						update_query('tblcustomfieldsvalues',array('value' => ''),array("fieldid"=>(int)$customfieldid,'relid'=>(int)$userid,'value' => $aPreauth['id']));
+            	        logTransaction($gateway['paymentmethod'],'GoCardless Preauthorisation for user ' . $userid . ' Cancelled ('.$aPreauth['id'].')','Cancelled');
+					}else{
+	                   # find preauth in tblhosting and empty out the subscriptionid field
+    	                update_query('tblhosting',array('subscriptionid' => ''),array('subscriptionid'    => $aPreauth['id']));
+        	            # log each preauth that has been cancelled
+            	        logTransaction($gateway['paymentmethod'],'GoCardless Preauthorisation Cancelled ('.$aPreauth['id'].')','Cancelled');
+					}
                 }
                 break;
             default:

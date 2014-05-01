@@ -4,7 +4,7 @@
     *
     * @author WHMCSRC <info@whmcs.com>
 	* @author TandyUK Servers <admin@tandyukservers.co.uk>
-    * @version 1.1.1
+    * @version 1.1.2
     */
 
     # load GoCardless library
@@ -347,7 +347,6 @@
             while ($invoice_item = mysql_fetch_assoc($invoice_item_query)) {
                 $package_query = select_query('tblhosting', 'subscriptionid', array('id' => $invoice_item['relid']));
                 $package = mysql_fetch_assoc($package_query);
-
                 # if we have found a subscriptionID, store it in $preauthid
 				# Note: Product/Service level Subscription ID overrides client level DD preauth ID
                 if (!empty($package['subscriptionid'])) {
@@ -365,7 +364,6 @@
 					$preauthid = get_query_val("tblcustomfieldsvalues","value",array("fieldid"=>(int)$customfieldid,"relid"=>(int)$userid),"value","ASC","");
 				}
 			}
-
 
 
 
