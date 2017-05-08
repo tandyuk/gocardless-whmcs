@@ -2,6 +2,11 @@
 
 # Announcement
 
+__As of October 2017, the GoCardless API used to power this module is being shut down.__
+You may continue to use this module until then, however unless either GoCardless or WHMCS decide to release a new module to integrate them, we have no intention of continuing to support this.
+To Re-iterate, __As of October 2017, this module WILL cease to function__, and you will need to either write your own integration with the new GoCardless API, find another Direct Debit provider (And implement their own module, AND have all your clients setup new mandates), or cease to take Direct Debit payments.
+For the past 2 years I have been desperately trying to get GoCardless to either agree to write a new integration (For WHMCS 6.x and newer), or fund the writing of one, as yet to no avail.
+
 __As of 15th August 2013, the GoCardless WHMCS module will no longer be supported.__
 You are, however, welcome to continue using the module indefinitely. 
 
